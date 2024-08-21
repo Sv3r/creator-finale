@@ -1,0 +1,6 @@
+name: "${name}"
+version: "${version}"
+author: "${author}"
+api-version: "${minecraft}"
+description: CreatorSMP Finale
+main: be.sv3r.CreatorFinale
