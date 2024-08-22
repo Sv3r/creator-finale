@@ -2,6 +2,8 @@ package be.sv3r.listener;
 
 import be.sv3r.CreatorFinale;
 import be.sv3r.handler.GameHandler;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -30,9 +32,11 @@ public class PlayerListener implements Listener {
         player.setGameMode(GameMode.SPECTATOR);
         player.getInventory().clear();
 
+        Sound sound = Sound.sound(Key.key("finale.death.sound"), Sound.Source.MASTER, 1F, 1F);
 
-
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "playsound records.test player @a");
+        for(Player allPlayers : Bukkit.getOnlinePlayers()){
+            allPlayers.playSound(sound, Sound.Emitter.self());
+        }
 
         event.getDrops().clear();
         event.setKeepLevel(true);
