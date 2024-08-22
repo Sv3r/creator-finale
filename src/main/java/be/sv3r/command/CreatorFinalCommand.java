@@ -28,12 +28,20 @@ import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.*;
 
 public class CreatorFinalCommand extends AnnotatedCommand {
+
+    public static boolean started = false;
+
+    private static final int[] STAGE_TIMES = {15 * 60, 15 * 60, 15 * 60};
+    private static final int[] BORDER_SIZES = {500, 250, 100};
+    private static final int PAUSE_TIME = 5 * 60;
+
     public CreatorFinalCommand() {
         super("creatorfinal", "Creator final command.", List.of("cf"));
     }
@@ -109,6 +117,8 @@ public class CreatorFinalCommand extends AnnotatedCommand {
             Sound sound = Sound.sound(Key.key("item.goat_horn.sound.0"), Sound.Source.MASTER, 1F, 1F);
             player.playSound(sound, Sound.Emitter.self());
         });
+
+        startBorderTimer();
     }
 
     private static void duringCountdownCountdown(CountdownTask task, Component duringTitle, NamedTextColor color) {
@@ -130,5 +140,36 @@ public class CreatorFinalCommand extends AnnotatedCommand {
 
         final Title title = Title.title(mainTitle, Component.empty());
         target.showTitle(title);
+    }
+    private static void startBorderTimer() {
+        new BukkitRunnable() {
+            private int stage = 0;
+
+            @Override
+            public void run() {
+                if (stage < STAGE_TIMES.length) {
+                    int time = STAGE_TIMES[stage];
+                    int borderSize = BORDER_SIZES[stage];
+
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            Bukkit.getWorlds().forEach(world -> {
+                                world.getWorldBorder().setSize(borderSize, time);
+                            });
+
+                            Bukkit.getOnlinePlayers().forEach(player -> {
+                                Sound alarm = Sound.sound(Key.key("finale.border.alarm"), Sound.Source.MASTER, 1F, 1F);
+                                player.playSound(alarm, Sound.Emitter.self());
+                            });
+                        }
+                    }.runTaskLater(CreatorFinale.getPlugin(), 20L * PAUSE_TIME);
+
+                    stage++;
+                } else {
+                    this.cancel();
+                }
+            }
+        }.runTaskTimer(CreatorFinale.getPlugin(), 0, 20L * (15 * 60 + PAUSE_TIME));
     }
 }
