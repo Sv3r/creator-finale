@@ -34,9 +34,6 @@ import java.time.Duration;
 import java.util.*;
 
 public class CreatorFinalCommand extends AnnotatedCommand {
-    private final Set<Method> methods = new HashSet<>();
-    public static final Set<Player> PLAYERS = new HashSet<>();
-
     public CreatorFinalCommand() {
         super("creatorfinal", "Creator final command.", List.of("cf"));
     }
@@ -53,7 +50,7 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                         .then(Commands.argument("stopTitle", ArgumentTypes.component())
                                 .then(Commands.argument("color", ArgumentTypes.namedColor())
                                         .then(Commands.argument("duration", IntegerArgumentType.integer())
-                                                .then(Commands.argument("worldborderSize", IntegerArgumentType.integer(1)) // Changed the argument name
+                                                .then(Commands.argument("worldborderSize", IntegerArgumentType.integer(1))
                                                     .executes(context -> {
                                                         Component countdownTitle = context.getArgument("countdownTitle", Component.class);
                                                         Component stopTitle = context.getArgument("stopTitle", Component.class);
@@ -63,18 +60,15 @@ public class CreatorFinalCommand extends AnnotatedCommand {
 
                                                         GameHandler.setupGame();
 
-                                                        // Execute the worldborder command
                                                         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "worldborder set " + worldborderSize);
 
-                                                        // Start the countdown task
                                                         CountdownTask countdownRunnable = new CountdownTask(
                                                                 CreatorFinale.getPlugin(),
                                                                 duration,
                                                                 () -> {
-                                                                // Logic before the countdown ends
                                                                 },
-                                                                () -> stopCountdownCountdown(stopTitle, color), // Logic after the countdown ends
-                                                                (task) -> duringCountdownCountdown(task, countdownTitle, color) // Logic during the countdown
+                                                                () -> stopCountdownCountdown(stopTitle, color),
+                                                                (task) -> duringCountdownCountdown(task, countdownTitle, color)
                                                         );
                                                         countdownRunnable.scheduleTask();
 
