@@ -18,6 +18,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
@@ -36,11 +37,12 @@ import java.util.*;
 
 public class CreatorFinalCommand extends AnnotatedCommand {
 
-    public static boolean started = false;
+    private static final int[] STAGE_TIMES = {60, 60, 60};
+    private static final int[] BORDER_SIZES = {1100, 1000, 900};
+    private static final int PAUSE_TIME = 60;
 
-    private static final int[] STAGE_TIMES = {15 * 60, 15 * 60, 15 * 60};
-    private static final int[] BORDER_SIZES = {500, 250, 100};
-    private static final int PAUSE_TIME = 5 * 60;
+    public static boolean worldBorder = false;
+    public static boolean canMove = true;
 
     public CreatorFinalCommand() {
         super("creatorfinal", "Creator final command.", List.of("cf"));
@@ -60,26 +62,32 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                                         .then(Commands.argument("duration", IntegerArgumentType.integer())
                                                 .then(Commands.argument("worldborderSize", IntegerArgumentType.integer(1))
                                                     .executes(context -> {
-                                                        Component countdownTitle = context.getArgument("countdownTitle", Component.class);
-                                                        Component stopTitle = context.getArgument("stopTitle", Component.class);
-                                                        int duration = context.getArgument("duration", Integer.class);
-                                                        NamedTextColor color = context.getArgument("color", NamedTextColor.class);
-                                                        int worldborderSize = IntegerArgumentType.getInteger(context, "worldborderSize");
+                                                        CommandSourceStack sourceStack = context.getSource();
 
-                                                        GameHandler.setupGame();
+                                                        if (!GameHandler.started){
+                                                            Component countdownTitle = context.getArgument("countdownTitle", Component.class);
+                                                            Component stopTitle = context.getArgument("stopTitle", Component.class);
+                                                            int duration = context.getArgument("duration", Integer.class);
+                                                            NamedTextColor color = context.getArgument("color", NamedTextColor.class);
+                                                            int worldborderSize = IntegerArgumentType.getInteger(context, "worldborderSize");
 
-                                                        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "worldborder set " + worldborderSize);
+                                                            GameHandler.setupGame();
 
-                                                        CountdownTask countdownRunnable = new CountdownTask(
-                                                                CreatorFinale.getPlugin(),
-                                                                duration,
-                                                                () -> {
-                                                                },
-                                                                () -> stopCountdownCountdown(stopTitle, color),
-                                                                (task) -> duringCountdownCountdown(task, countdownTitle, color)
-                                                        );
-                                                        countdownRunnable.scheduleTask();
+                                                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "worldborder set " + worldborderSize);
 
+                                                            CountdownTask countdownRunnable = new CountdownTask(
+                                                                    CreatorFinale.getPlugin(),
+                                                                    duration,
+                                                                    () -> {
+                                                                    },
+                                                                    () -> stopCountdownCountdown(stopTitle, color),
+                                                                    (task) -> duringCountdownCountdown(task, countdownTitle, color)
+                                                            );
+                                                            countdownRunnable.scheduleTask();
+
+                                                        } else {
+                                                            sourceStack.getSender().sendMessage("You need to reset the game to do it again /cf stopall");
+                                                        }
                                                         return 0;
                                                     })
                                                 )
@@ -87,6 +95,19 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                                 )
                         )
                 );
+    }
+    @SubCommand
+    public ArgumentBuilder<CommandSourceStack, ?> onSafeCommand() {
+        return Commands.literal("stopall").executes((source) -> {
+            CommandSourceStack sourceStack = source.getSource();
+
+            GameHandler.started = false;
+            canMove = true;
+
+            sourceStack.getSender().sendMessage("Reseted the game!");
+
+            return 0;
+        });
     }
     @SubCommand
     public ArgumentBuilder<CommandSourceStack, ?> onSpawnPointSet() {
@@ -112,7 +133,8 @@ public class CreatorFinalCommand extends AnnotatedCommand {
             final Title title = Title.title(stopTitle.style(Style.style(color, TextDecoration.BOLD)), Component.empty(), times);
             player.showTitle(title);
 
-            GameHandler.started = false;
+            GameHandler.started = true;
+            canMove = true;
 
             Sound sound = Sound.sound(Key.key("item.goat_horn.sound.0"), Sound.Source.MASTER, 1F, 1F);
             player.playSound(sound, Sound.Emitter.self());
@@ -133,14 +155,6 @@ public class CreatorFinalCommand extends AnnotatedCommand {
             player.playSound(sound, Sound.Emitter.self());
         });
     }
-
-    private static void showWinTitle(final Audience target, final Player winner) {
-        final Component mainTitle = Component.text().content(winner.getName()).color(TextColor.fromHexString("#ff8800"))
-                .append(Component.text().content(" wint!").color(TextColor.fromHexString("#ffd9bf"))).build();
-
-        final Title title = Title.title(mainTitle, Component.empty());
-        target.showTitle(title);
-    }
     private static void startBorderTimer() {
         new BukkitRunnable() {
             private int stage = 0;
@@ -158,18 +172,45 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                                 world.getWorldBorder().setSize(borderSize, time);
                             });
 
+                            TextComponent borderClosing = Component.text("\ue002 ")
+                                    .append(Component.text("Border is aan het krimpen!", TextColor.color(0xf0544f), TextDecoration.BOLD));
+
                             Bukkit.getOnlinePlayers().forEach(player -> {
                                 Sound alarm = Sound.sound(Key.key("finale.border.alarm"), Sound.Source.MASTER, 1F, 1F);
                                 player.playSound(alarm, Sound.Emitter.self());
+                                sendLongActionBar(player, borderClosing, 15);
                             });
                         }
                     }.runTaskLater(CreatorFinale.getPlugin(), 20L * PAUSE_TIME);
 
                     stage++;
+
                 } else {
                     this.cancel();
                 }
             }
-        }.runTaskTimer(CreatorFinale.getPlugin(), 0, 20L * (15 * 60 + PAUSE_TIME));
+        }.runTaskTimer(CreatorFinale.getPlugin(), 0, 20L * (60 + PAUSE_TIME));
+    }
+    public static void sendLongActionBar(Player player, TextComponent message, int durationInSeconds) {
+        int displayTimeTicks = 20;
+        int repeatTimes = (durationInSeconds * 20) / displayTimeTicks;
+
+        new BukkitRunnable() {
+            int count = 0;
+
+            @Override
+            public void run() {
+                if (count < repeatTimes) {
+                    player.sendActionBar(message);
+                    count++;
+
+                    worldBorder = true;
+                } else {
+                    worldBorder = false;
+                    player.stopAllSounds();
+                    this.cancel();
+                }
+            }
+        }.runTaskTimer(CreatorFinale.getPlugin(), 0, displayTimeTicks);
     }
 }

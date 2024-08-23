@@ -1,11 +1,13 @@
 package be.sv3r.listener;
 
 import be.sv3r.CreatorFinale;
+import be.sv3r.command.CreatorFinalCommand;
 import be.sv3r.handler.GameHandler;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
@@ -16,6 +18,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.w3c.dom.Text;
@@ -41,10 +44,10 @@ public class PlayerListener implements Listener {
         Sound sound = Sound.sound(Key.key("finale.death.sound"), Sound.Source.MASTER, 1F, 1F);
 
         TextComponent deathMessage = Component.text("\ue002 ")
-                .append(event.getPlayer().displayName()) // Use directly without converting to string
+                .append(event.getPlayer().displayName())
                 .color(TextColor.color(0xffffff))
                 .decorate(TextDecoration.BOLD)
-                .append(Component.text(" is uitgeschakeld!", TextColor.color(0xf0544f), TextDecoration.BOLD));
+                .append(Component.text(" is uitgeschakeld!", TextColor.color(0xf0544f)));
 
         for(Player allPlayers : Bukkit.getOnlinePlayers()){
             allPlayers.playSound(sound, Sound.Emitter.self());
@@ -60,8 +63,14 @@ public class PlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerMove(PlayerMoveEvent event){
-        if (!event.getPlayer().hasPermission("creator.finale.*")){
-            event.setCancelled(GameHandler.started);
+        if (!event.getPlayer().hasPermission("creator.finale.*") && !CreatorFinalCommand.canMove){
+            event.setCancelled(true);
+        }
+    }
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerChat(PlayerChatEvent event){
+        if (!event.getPlayer().hasPermission("creator.finale.*") && GameHandler.started){
+            event.setCancelled(true);
         }
     }
 
@@ -74,7 +83,7 @@ public class PlayerListener implements Listener {
 
             @Override
             public void run() {
-                if (count < repeatTimes) {
+                if (count < repeatTimes && !CreatorFinalCommand.worldBorder) {
                     player.sendActionBar(message);
                     count++;
                 } else {

@@ -1,6 +1,7 @@
 package be.sv3r.handler;
 
 import be.sv3r.CreatorFinale;
+import be.sv3r.command.CreatorFinalCommand;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -16,10 +17,10 @@ public class GameHandler {
 
     public static void setupGame() {
         CreatorFinale.getPlugin().getServer().getScheduler().runTask(CreatorFinale.getPlugin(CreatorFinale.class), () -> {
-            started = true;
             List<Location> locations = ConfigHandler.getInstance().getSpawnpointLocations();
             Collections.shuffle(locations, new Random());
             List<Player> PLAYER_LIST = (List<Player>) Bukkit.getOnlinePlayers().stream().toList();
+            CreatorFinalCommand.canMove = false;
             for (int i = 0; i < PLAYER_LIST.size(); i++) {
                 Player player = PLAYER_LIST.get(i);
                 if (!player.hasPermission("creator.finale.*")){
