@@ -16,6 +16,9 @@ public class ConfigHandler {
     private YamlConfiguration config;
 
     private final List<Location> spawnpointLocations = new ArrayList<>();
+    private int[] stageTimes;
+    private int[] borderSizes;
+    private int pauseTime;
 
     private ConfigHandler() {
     }
@@ -44,6 +47,13 @@ public class ConfigHandler {
                 spawnpointLocations.add(location);
             }
         }
+        List<Integer> stageTimesList = config.getIntegerList("stage-times");
+        stageTimes = stageTimesList.stream().mapToInt(i -> i).toArray();
+
+        List<Integer> borderSizesList = config.getIntegerList("border-sizes");
+        borderSizes = borderSizesList.stream().mapToInt(i -> i).toArray();
+
+        pauseTime = config.getInt("pause-time", 60);
     }
 
     public void save() {
@@ -66,6 +76,18 @@ public class ConfigHandler {
     public void addSpawnpointLocation(Location location) {
         spawnpointLocations.add(location);
         set("spawnpoint-locations." + (spawnpointLocations.size() - 1), location);
+    }
+
+    public int[] getStageTimes() {
+        return stageTimes;
+    }
+
+    public int[] getBorderSizes() {
+        return borderSizes;
+    }
+
+    public int getPauseTime() {
+        return pauseTime;
     }
 
     public static ConfigHandler getInstance() {

@@ -29,6 +29,7 @@ import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Stray;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.Method;
@@ -37,12 +38,10 @@ import java.util.*;
 
 public class CreatorFinalCommand extends AnnotatedCommand {
 
-    private static final int[] STAGE_TIMES = {60, 60, 60};
-    private static final int[] BORDER_SIZES = {1100, 1000, 900};
-    private static final int PAUSE_TIME = 60;
-
     public static boolean worldBorder = false;
     public static boolean canMove = true;
+
+    private final HashMap<UUID, Integer> playerStrikes = new HashMap<>();
 
     public CreatorFinalCommand() {
         super("creatorfinal", "Creator final command.", List.of("cf"));
@@ -125,6 +124,52 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                         })
                 );
     }
+    @SubCommand
+    public ArgumentBuilder<CommandSourceStack, ?> onReload() {
+        return Commands.literal("reload").executes((source) -> {
+            CommandSourceStack sourceStack = source.getSource();
+
+            ConfigHandler.getInstance().load();
+
+            sourceStack.getSender().sendMessage("Reloaded the config!");
+
+            return 0;
+        });
+    }
+
+    @SubCommand
+    public ArgumentBuilder<CommandSourceStack, ?> onStrike() {
+        return Commands.literal("strike")
+                .then(Commands.argument("player", ArgumentTypes.player())
+                        .then(Commands.argument("strikeText", ArgumentTypes.component())
+                                .executes((source) -> {
+                                    CommandSourceStack sourceStack = source.getSource();
+                                    Player player = source.getArgument("player", PlayerSelectorArgumentResolver.class).resolve(sourceStack).getFirst();
+                                    Component strikeText = source.getArgument("strikeText", Component.class);
+
+                                    UUID playerUUID = player.getUniqueId();
+                                    int strikes = playerStrikes.getOrDefault(playerUUID, 0) + 1;
+
+                                    playerStrikes.put(playerUUID, strikes);
+
+                                    showWinTitle(player, strikeText);
+
+                                    if (strikes >= 3) {
+                                        player.setHealth(0);
+                                    }
+
+                                    return Command.SINGLE_SUCCESS;
+                                })
+                        )
+                );
+    }
+
+    private static void showWinTitle(final Audience target, final Component strikeWarning) {
+        final Component mainTitle = Component.text("STRIKE WARNING", TextColor.color(0xf0544f), TextDecoration.BOLD);
+
+        final Title title = Title.title(mainTitle, strikeWarning.style(Style.style(TextColor.color(0xffffff), TextDecoration.BOLD)));
+        target.showTitle(title);
+    }
 
     private static void stopCountdownCountdown(Component stopTitle, NamedTextColor color) {
         Bukkit.getOnlinePlayers().forEach(player -> {
@@ -156,14 +201,18 @@ public class CreatorFinalCommand extends AnnotatedCommand {
         });
     }
     private static void startBorderTimer() {
+        int[] stageTimes = ConfigHandler.getInstance().getStageTimes();
+        int[] borderSizes = ConfigHandler.getInstance().getBorderSizes();
+        int pauseTime = ConfigHandler.getInstance().getPauseTime();
+
         new BukkitRunnable() {
             private int stage = 0;
 
             @Override
             public void run() {
-                if (stage < STAGE_TIMES.length) {
-                    int time = STAGE_TIMES[stage];
-                    int borderSize = BORDER_SIZES[stage];
+                if (stage < stageTimes.length) {
+                    int time = stageTimes[stage];
+                    int borderSize = borderSizes[stage];
 
                     new BukkitRunnable() {
                         @Override
@@ -181,7 +230,7 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                                 sendLongActionBar(player, borderClosing, 15);
                             });
                         }
-                    }.runTaskLater(CreatorFinale.getPlugin(), 20L * PAUSE_TIME);
+                    }.runTaskLater(CreatorFinale.getPlugin(), 20L * pauseTime);
 
                     stage++;
 
@@ -189,7 +238,7 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                     this.cancel();
                 }
             }
-        }.runTaskTimer(CreatorFinale.getPlugin(), 0, 20L * (60 + PAUSE_TIME));
+        }.runTaskTimer(CreatorFinale.getPlugin(), 0, 20L * (60 + pauseTime));
     }
     public static void sendLongActionBar(Player player, TextComponent message, int durationInSeconds) {
         int displayTimeTicks = 20;

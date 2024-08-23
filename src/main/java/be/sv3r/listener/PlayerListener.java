@@ -26,6 +26,7 @@ import org.w3c.dom.Text;
 import java.util.HashMap;
 import java.util.UUID;
 
+
 public class PlayerListener implements Listener {
     public final HashMap<UUID, Location> deathLocations = new HashMap<>();
 
