@@ -11,10 +11,9 @@ import org.bukkit.entity.Player;
 import java.util.*;
 
 public class GameHandler {
-
     public static final Set<Player> COMPETING_PLAYERS = new HashSet<>();
     public static boolean started = false;
-
+    public static int stage = 0;
 
     public static void setupGame() {
         CreatorFinale.getPlugin().getServer().getScheduler().runTask(CreatorFinale.getPlugin(CreatorFinale.class), () -> {

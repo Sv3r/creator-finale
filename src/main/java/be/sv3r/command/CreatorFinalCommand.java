@@ -24,10 +24,7 @@ import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
-import org.bukkit.Bukkit;
-import org.bukkit.Color;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Stray;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -72,9 +69,8 @@ public class CreatorFinalCommand extends AnnotatedCommand {
 
                                                             GameHandler.setupGame();
 
-                                                            Bukkit.getWorlds().forEach(world -> {
-                                                                world.getWorldBorder().setSize(worldborderSize);
-                                                            });
+                                                            World world = Bukkit.getWorlds().getFirst();
+                                                            world.getWorldBorder().setSize(worldborderSize);
 
                                                             CountdownTask countdownRunnable = new CountdownTask(
                                                                     CreatorFinale.getPlugin(),
@@ -231,24 +227,23 @@ public class CreatorFinalCommand extends AnnotatedCommand {
         int pauseTime = ConfigHandler.getInstance().getPauseTime() * 60; // Convert minutes to seconds
 
         new BukkitRunnable() {
-            int stage = 0;
-
             @Override
             public void run() {
-                if (stage < stageTimes.length) {
-                    int time = stageTimes[stage]; // Stage time in seconds
-                    int borderSize = borderSizes[stage]; // Border size for this stage
+                if (GameHandler.stage < stageTimes.length) {
+                    int time = stageTimes[GameHandler.stage]; // Stage time in seconds
+                    int borderSize = borderSizes[GameHandler.stage]; // Border size for this stage
                     long delay = (time + pauseTime) * 20L; // Convert total time to ticks
 
-                    Bukkit.getLogger().info("Stage: " + stage);
-                    Bukkit.getLogger().info("Time: " + time);
-                    Bukkit.getLogger().info("Border Size: " + borderSize);
-                    Bukkit.getLogger().info("Next Delay: " + delay);
+                    CreatorFinale.LOGGER.info("Stage: {}\nTime: {}\nBorder Size: {}\n Next Delay: {}",
+                            GameHandler.stage,
+                            time,
+                            borderSize,
+                            delay
+                    );
 
                     // Resize the world border and notify players
-                    Bukkit.getWorlds().forEach(world -> {
-                        world.getWorldBorder().setSize(borderSize, time);
-                    });
+                    World world = Bukkit.getWorlds().getFirst();
+                    world.getWorldBorder().setSize(borderSize, time);
 
                     TextComponent borderClosing = Component.text("\ue002 ")
                             .append(Component.text("Border is aan het krimpen!", TextColor.color(0xf0544f), TextDecoration.BOLD));
@@ -260,7 +255,7 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                     });
 
                     // Schedule the next stage after the current stage time plus pause time
-                    stage++;
+                    GameHandler.stage++;
                     this.runTaskLater(CreatorFinale.getPlugin(), delay);
                 } else {
                     // Cancel the task when all stages are complete

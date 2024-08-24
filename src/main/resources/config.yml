@@ -8,7 +8,7 @@ border-sizes:
   - 1000
   - 900
 
-#Minuts
+#Minutes
 pause-time: 5
 
 spawnpoint-locations:
