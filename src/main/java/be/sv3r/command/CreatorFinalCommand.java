@@ -72,7 +72,9 @@ public class CreatorFinalCommand extends AnnotatedCommand {
 
                                                             GameHandler.setupGame();
 
-                                                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "worldborder set " + worldborderSize);
+                                                            Bukkit.getWorlds().forEach(world -> {
+                                                                world.getWorldBorder().setSize(worldborderSize);
+                                                            });
 
                                                             CountdownTask countdownRunnable = new CountdownTask(
                                                                     CreatorFinale.getPlugin(),
@@ -141,31 +143,54 @@ public class CreatorFinalCommand extends AnnotatedCommand {
     public ArgumentBuilder<CommandSourceStack, ?> onStrike() {
         return Commands.literal("strike")
                 .then(Commands.argument("player", ArgumentTypes.player())
-                        .then(Commands.argument("strikeText", ArgumentTypes.component())
+                        .executes((source) -> {
+                            CommandSourceStack sourceStack = source.getSource();
+                            if (sourceStack.getSender().hasPermission("creator.finale.strike")) {
+                                Player player = source.getArgument("player", PlayerSelectorArgumentResolver.class).resolve(sourceStack).getFirst();
+
+                                UUID playerUUID = player.getUniqueId();
+                                int strikes = playerStrikes.getOrDefault(playerUUID, 0) + 1;
+
+                                playerStrikes.put(playerUUID, strikes);
+
+                                showStrikeTitle(player, Component.empty(), strikes);
+
+                                if (strikes >= 3) {
+                                    player.setHealth(0);
+                                }
+
+                            }
+                            return Command.SINGLE_SUCCESS;
+                        })
+                );
+    }
+    @SubCommand
+    public ArgumentBuilder<CommandSourceStack, ?> onWarn() {
+        return Commands.literal("warn")
+                .then(Commands.argument("player", ArgumentTypes.player())
+                        .then(Commands.argument("warnText", ArgumentTypes.component())
                                 .executes((source) -> {
                                     CommandSourceStack sourceStack = source.getSource();
-                                    Player player = source.getArgument("player", PlayerSelectorArgumentResolver.class).resolve(sourceStack).getFirst();
-                                    Component strikeText = source.getArgument("strikeText", Component.class);
+                                    if (sourceStack.getSender().hasPermission("creator.finale.warn")){
+                                        Player player = source.getArgument("player", PlayerSelectorArgumentResolver.class).resolve(sourceStack).getFirst();
+                                        Component warnText = source.getArgument("warnText", Component.class);
 
-                                    UUID playerUUID = player.getUniqueId();
-                                    int strikes = playerStrikes.getOrDefault(playerUUID, 0) + 1;
-
-                                    playerStrikes.put(playerUUID, strikes);
-
-                                    showWinTitle(player, strikeText);
-
-                                    if (strikes >= 3) {
-                                        player.setHealth(0);
+                                        showWWarnTitle(player, warnText);
                                     }
-
                                     return Command.SINGLE_SUCCESS;
                                 })
                         )
                 );
     }
 
-    private static void showWinTitle(final Audience target, final Component strikeWarning) {
-        final Component mainTitle = Component.text("STRIKE WARNING", TextColor.color(0xf0544f), TextDecoration.BOLD);
+    private static void showStrikeTitle(final Audience target, final Component strikeWarning, int strikes) {
+        final Component mainTitle = Component.text("STRIKE WARNING: " + strikes, TextColor.color(0xf0544f), TextDecoration.BOLD);
+
+        final Title title = Title.title(mainTitle, strikeWarning.style(Style.style(TextColor.color(0xffffff), TextDecoration.BOLD)));
+        target.showTitle(title);
+    }
+    private static void showWWarnTitle(final Audience target, final Component strikeWarning) {
+        final Component mainTitle = Component.text("WARNING", TextColor.color(0xf0544f), TextDecoration.BOLD);
 
         final Title title = Title.title(mainTitle, strikeWarning.style(Style.style(TextColor.color(0xffffff), TextDecoration.BOLD)));
         target.showTitle(title);
@@ -201,44 +226,48 @@ public class CreatorFinalCommand extends AnnotatedCommand {
         });
     }
     private static void startBorderTimer() {
-        int[] stageTimes = ConfigHandler.getInstance().getStageTimes();
+        int[] stageTimes = ConfigHandler.getInstance().getStageTimes(); // in seconds
         int[] borderSizes = ConfigHandler.getInstance().getBorderSizes();
-        int pauseTime = ConfigHandler.getInstance().getPauseTime();
+        int pauseTime = ConfigHandler.getInstance().getPauseTime() * 60; // Convert minutes to seconds
 
         new BukkitRunnable() {
-            private int stage = 0;
+            int stage = 0;
 
             @Override
             public void run() {
                 if (stage < stageTimes.length) {
-                    int time = stageTimes[stage];
-                    int borderSize = borderSizes[stage];
+                    int time = stageTimes[stage]; // Stage time in seconds
+                    int borderSize = borderSizes[stage]; // Border size for this stage
+                    long delay = (time + pauseTime) * 20L; // Convert total time to ticks
 
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            Bukkit.getWorlds().forEach(world -> {
-                                world.getWorldBorder().setSize(borderSize, time);
-                            });
+                    Bukkit.getLogger().info("Stage: " + stage);
+                    Bukkit.getLogger().info("Time: " + time);
+                    Bukkit.getLogger().info("Border Size: " + borderSize);
+                    Bukkit.getLogger().info("Next Delay: " + delay);
 
-                            TextComponent borderClosing = Component.text("\ue002 ")
-                                    .append(Component.text("Border is aan het krimpen!", TextColor.color(0xf0544f), TextDecoration.BOLD));
+                    // Resize the world border and notify players
+                    Bukkit.getWorlds().forEach(world -> {
+                        world.getWorldBorder().setSize(borderSize, time);
+                    });
 
-                            Bukkit.getOnlinePlayers().forEach(player -> {
-                                Sound alarm = Sound.sound(Key.key("finale.border.alarm"), Sound.Source.MASTER, 1F, 1F);
-                                player.playSound(alarm, Sound.Emitter.self());
-                                sendLongActionBar(player, borderClosing, 15);
-                            });
-                        }
-                    }.runTaskLater(CreatorFinale.getPlugin(), 20L * pauseTime);
+                    TextComponent borderClosing = Component.text("\ue002 ")
+                            .append(Component.text("Border is aan het krimpen!", TextColor.color(0xf0544f), TextDecoration.BOLD));
 
+                    Bukkit.getOnlinePlayers().forEach(player -> {
+                        Sound alarm = Sound.sound(Key.key("finale.border.alarm"), Sound.Source.MASTER, 1F, 1F);
+                        player.playSound(alarm, Sound.Emitter.self());
+                        sendLongActionBar(player, borderClosing, 15);
+                    });
+
+                    // Schedule the next stage after the current stage time plus pause time
                     stage++;
-
+                    this.runTaskLater(CreatorFinale.getPlugin(), delay);
                 } else {
+                    // Cancel the task when all stages are complete
                     this.cancel();
                 }
             }
-        }.runTaskTimer(CreatorFinale.getPlugin(), 0, 20L * (60 + pauseTime));
+        }.runTask(CreatorFinale.getPlugin()); // Start immediately
     }
     public static void sendLongActionBar(Player player, TextComponent message, int durationInSeconds) {
         int displayTimeTicks = 20;

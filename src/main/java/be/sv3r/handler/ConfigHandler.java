@@ -53,7 +53,7 @@ public class ConfigHandler {
         List<Integer> borderSizesList = config.getIntegerList("border-sizes");
         borderSizes = borderSizesList.stream().mapToInt(i -> i).toArray();
 
-        pauseTime = config.getInt("pause-time", 60);
+        pauseTime = config.getInt("pause-time", 5);
     }
 
     public void save() {
