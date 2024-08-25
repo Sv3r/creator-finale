@@ -21,26 +21,15 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.w3c.dom.Text;
-
-import java.util.HashMap;
-import java.util.UUID;
 
 
 public class PlayerListener implements Listener {
-    public final HashMap<UUID, Location> deathLocations = new HashMap<>();
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player player = event.getPlayer();
 
         if (!GameHandler.COMPETING_PLAYERS.contains(player)) return;
-
-        UUID playerUuid = player.getUniqueId();
-
-        deathLocations.put(playerUuid, player.getLocation());
-        player.setGameMode(GameMode.SPECTATOR);
-        player.getInventory().clear();
 
         Sound sound = Sound.sound(Key.key("finale.death.sound"), Sound.Source.MASTER, 1F, 1F);
 
@@ -52,25 +41,19 @@ public class PlayerListener implements Listener {
 
         for(Player allPlayers : Bukkit.getOnlinePlayers()){
             allPlayers.playSound(sound, Sound.Emitter.self());
-
             sendLongActionBar(allPlayers, deathMessage, 15);
         }
-
-        event.setKeepLevel(true);
-        event.setShouldDropExperience(false);
-
-        CreatorFinale.getPlugin().getServer().getScheduler().runTaskLater(CreatorFinale.getPlugin(), () -> player.spigot().respawn(), 1L);
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerMove(PlayerMoveEvent event){
-        if (!event.getPlayer().hasPermission("creator.finale.*") && !CreatorFinalCommand.canMove){
+        if (event.getPlayer().hasPermission("group.crude") && !CreatorFinalCommand.canMove){
             event.setCancelled(true);
         }
     }
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChat(PlayerChatEvent event){
-        if (!event.getPlayer().hasPermission("creator.finale.*") && GameHandler.started){
+        if (!event.getPlayer().hasPermission("creator.finale.talk") && GameHandler.started){
             event.setCancelled(true);
         }
     }

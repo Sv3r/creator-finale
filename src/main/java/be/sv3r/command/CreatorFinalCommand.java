@@ -67,10 +67,13 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                                                             NamedTextColor color = context.getArgument("color", NamedTextColor.class);
                                                             int worldborderSize = IntegerArgumentType.getInteger(context, "worldborderSize");
 
-                                                            GameHandler.setupGame();
-
                                                             World world = Bukkit.getWorlds().getFirst();
                                                             world.getWorldBorder().setSize(worldborderSize);
+
+                                                            Bukkit.getOnlinePlayers().forEach(player -> {
+                                                                Sound countdown = Sound.sound(Key.key("finale.countdown.marnix"), Sound.Source.MASTER, 1F, 1F);
+                                                                player.playSound(countdown, Sound.Emitter.self());
+                                                            });
 
                                                             CountdownTask countdownRunnable = new CountdownTask(
                                                                     CreatorFinale.getPlugin(),
@@ -90,6 +93,46 @@ public class CreatorFinalCommand extends AnnotatedCommand {
                                                 )
                                         )
                                 )
+                        )
+                );
+    }
+
+    @SubCommand
+    public ArgumentBuilder<CommandSourceStack, ?> onSetLocation() {
+        return Commands.literal("setLocation")
+                .executes((source) -> {
+                    CommandSourceStack sourceStack = source.getSource();
+
+                    GameHandler.setupGame();
+
+                    return Command.SINGLE_SUCCESS;
+                });
+    }
+
+    @SubCommand
+    public ArgumentBuilder<CommandSourceStack, ?> onBorder() {
+        return Commands.literal("border")
+                .then(Commands.argument("duration", IntegerArgumentType.integer())
+                        .then(Commands.argument("size", IntegerArgumentType.integer())
+                                .executes((source) -> {
+                                    CommandSourceStack sourceStack = source.getSource();
+                                    int duration = source.getArgument("duration", Integer.class);
+                                    int size = source.getArgument("size", Integer.class);
+
+                                    TextComponent borderClosing = Component.text("\ue002 ")
+                                            .append(Component.text("Border is aan het krimpen!", TextColor.color(0xf0544f), TextDecoration.BOLD));
+
+                                    Bukkit.getOnlinePlayers().forEach(player -> {
+                                        Sound alarm = Sound.sound(Key.key("finale.border.alarm"), Sound.Source.MASTER, 1F, 1F);
+                                        player.playSound(alarm, Sound.Emitter.self());
+                                        sendLongActionBar(player, borderClosing, 15);
+                                    });
+
+                                    World world = Bukkit.getWorlds().getFirst();
+                                    world.getWorldBorder().setSize(size, duration * 60L);
+
+                                    return Command.SINGLE_SUCCESS;
+                                })
                         )
                 );
     }
@@ -201,12 +244,7 @@ public class CreatorFinalCommand extends AnnotatedCommand {
 
             GameHandler.started = true;
             canMove = true;
-
-            Sound sound = Sound.sound(Key.key("item.goat_horn.sound.0"), Sound.Source.MASTER, 1F, 1F);
-            player.playSound(sound, Sound.Emitter.self());
         });
-
-        startBorderTimer();
     }
 
     private static void duringCountdownCountdown(CountdownTask task, Component duringTitle, NamedTextColor color) {
@@ -216,54 +254,51 @@ public class CreatorFinalCommand extends AnnotatedCommand {
             final Title.Times times = Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(1000), Duration.ofMillis(1000));
             final Title title = Title.title(duringTitle.style(Style.style(color, TextDecoration.BOLD)), subtitle, times);
             player.showTitle(title);
-
-            Sound sound = Sound.sound(Key.key("entity.experience_orb.pickup"), Sound.Source.MASTER, 1F, 1F);
-            player.playSound(sound, Sound.Emitter.self());
         });
     }
-    private static void startBorderTimer() {
-        int[] stageTimes = ConfigHandler.getInstance().getStageTimes(); // in seconds
-        int[] borderSizes = ConfigHandler.getInstance().getBorderSizes();
-        int pauseTime = ConfigHandler.getInstance().getPauseTime() * 60; // Convert minutes to seconds
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (GameHandler.stage < stageTimes.length) {
-                    int time = stageTimes[GameHandler.stage]; // Stage time in seconds
-                    int borderSize = borderSizes[GameHandler.stage]; // Border size for this stage
-                    long delay = (time + pauseTime) * 20L; // Convert total time to ticks
-
-                    CreatorFinale.LOGGER.info("Stage: {}\nTime: {}\nBorder Size: {}\n Next Delay: {}",
-                            GameHandler.stage,
-                            time,
-                            borderSize,
-                            delay
-                    );
-
-                    // Resize the world border and notify players
-                    World world = Bukkit.getWorlds().getFirst();
-                    world.getWorldBorder().setSize(borderSize, time);
-
-                    TextComponent borderClosing = Component.text("\ue002 ")
-                            .append(Component.text("Border is aan het krimpen!", TextColor.color(0xf0544f), TextDecoration.BOLD));
-
-                    Bukkit.getOnlinePlayers().forEach(player -> {
-                        Sound alarm = Sound.sound(Key.key("finale.border.alarm"), Sound.Source.MASTER, 1F, 1F);
-                        player.playSound(alarm, Sound.Emitter.self());
-                        sendLongActionBar(player, borderClosing, 15);
-                    });
-
-                    // Schedule the next stage after the current stage time plus pause time
-                    GameHandler.stage++;
-                    this.runTaskLater(CreatorFinale.getPlugin(), delay);
-                } else {
-                    // Cancel the task when all stages are complete
-                    this.cancel();
-                }
-            }
-        }.runTask(CreatorFinale.getPlugin()); // Start immediately
-    }
+//    private static void startBorderTimer() {
+//        int[] stageTimes = ConfigHandler.getInstance().getStageTimes(); // in seconds
+//        int[] borderSizes = ConfigHandler.getInstance().getBorderSizes();
+//        int pauseTime = ConfigHandler.getInstance().getPauseTime() * 60; // Convert minutes to seconds
+//
+//        new BukkitRunnable() {
+//            @Override
+//            public void run() {
+//                if (GameHandler.stage < stageTimes.length) {
+//                    int time = stageTimes[GameHandler.stage]; // Stage time in seconds
+//                    int borderSize = borderSizes[GameHandler.stage]; // Border size for this stage
+//                    long delay = (time + pauseTime) * 20L; // Convert total time to ticks
+//
+//                    CreatorFinale.LOGGER.info("Stage: {}\nTime: {}\nBorder Size: {}\n Next Delay: {}",
+//                            GameHandler.stage,
+//                            time,
+//                            borderSize,
+//                            delay
+//                    );
+//
+//                    // Resize the world border and notify players
+//                    World world = Bukkit.getWorlds().getFirst();
+//                    world.getWorldBorder().setSize(borderSize, time);
+//
+//                    TextComponent borderClosing = Component.text("\ue002 ")
+//                            .append(Component.text("Border is aan het krimpen!", TextColor.color(0xf0544f), TextDecoration.BOLD));
+//
+//                    Bukkit.getOnlinePlayers().forEach(player -> {
+//                        Sound alarm = Sound.sound(Key.key("finale.border.alarm"), Sound.Source.MASTER, 1F, 1F);
+//                        player.playSound(alarm, Sound.Emitter.self());
+//                        sendLongActionBar(player, borderClosing, 15);
+//                    });
+//
+//                    // Schedule the next stage after the current stage time plus pause time
+//                    GameHandler.stage++;
+//                    this.runTaskLater(CreatorFinale.getPlugin(), delay);
+//                } else {
+//                    // Cancel the task when all stages are complete
+//                    this.cancel();
+//                }
+//            }
+//        }.runTask(CreatorFinale.getPlugin()); // Start immediately
+//    }
     public static void sendLongActionBar(Player player, TextComponent message, int durationInSeconds) {
         int displayTimeTicks = 20;
         int repeatTimes = (durationInSeconds * 20) / displayTimeTicks;
